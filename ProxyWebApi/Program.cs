@@ -11,14 +11,15 @@ using Microsoft.Extensions.Logging;
 namespace ProxyWebApi
 {
     public class Program
-    {
-        public static void Main(string[] args)
         {
-            CreateWebHostBuilder(args).Build().Run();
+            public static void Main(string[] args)
+            {
+                CreateWebHostBuilder(args).Build().Run();
+            }
+    
+            public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
+                WebHost.CreateDefaultBuilder(args)
+                    .UseUrls("https://*:5001;http://*:5000")
+                    .UseStartup<Startup>();
         }
-
-        public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
-            WebHost.CreateDefaultBuilder(args)
-                .UseStartup<Startup>();
-    }
 }
