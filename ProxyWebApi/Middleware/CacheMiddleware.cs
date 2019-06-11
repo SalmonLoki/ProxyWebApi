@@ -1,3 +1,6 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
@@ -18,22 +21,39 @@ namespace ProxyWebApi.Middleware
                         
             var httpClient = new HttpClient();
             
-            //здесь можно добавить чтение страниц в цикле по ссылке в коце страницы
+            var pages = new List<JsonObject>();
+            
             var jsonString = httpClient.GetAsync(Url).Result.Content.ReadAsStringAsync().Result;
             var jsonObject = JsonConvert.DeserializeObject<JsonObject>(jsonString);
-
+            var nextUrl = jsonObject.Next;
+            pages.Add(jsonObject);           
+            
+            while (true)
+            {
+                try
+                {
+                    jsonString = httpClient.GetAsync(nextUrl).Result.Content.ReadAsStringAsync().Result;
+                    jsonObject = JsonConvert.DeserializeObject<JsonObject>(jsonString);
+                    nextUrl = jsonObject.Next;
+                    pages.Add(jsonObject); 
+                }
+                catch (Exception e)
+                {
+                    break;
+                }              
+            }
             var cacheEntryOptions = new MemoryCacheEntryOptions();            
-            _cache.Set(CacheKeys.JsonObject, jsonObject, cacheEntryOptions);			
+            _cache.Set(CacheKeys.Pages, pages, cacheEntryOptions);			
         }
 
         public async Task Invoke(HttpContext httpContext)
         {
             if (httpContext.Request.Path.Value.ToLower() == "/products")
             {
-                _cache.TryGetValue(CacheKeys.JsonObject, out JsonObject cacheJsonObject);
-                
+                _cache.TryGetValue(CacheKeys.Pages, out List<JsonObject> cachePages);
+                var page = cachePages[0];
                 httpContext.Response.ContentType = "application/json";
-                var jsonString = JsonConvert.SerializeObject(cacheJsonObject);
+                var jsonString = JsonConvert.SerializeObject(page);
                 await httpContext.Response.WriteAsync(jsonString);
             }
             else {
